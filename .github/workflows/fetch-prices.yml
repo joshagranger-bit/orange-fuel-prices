@@ -1,0 +1,48 @@
+name: Fetch fuel prices
+
+on:
+  schedule:
+    # Runs every hour; fetch_prices.py exits immediately unless it's 9am or
+    # 9pm Australia/Sydney local time. This makes the schedule self-correcting
+    # across AEST/AEDT changes without needing to edit this cron expression.
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Fetch regardless of current Sydney local time'
+        type: boolean
+        default: true
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch prices
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then
+            python scripts/fetch_prices.py --force
+          else
+            python scripts/fetch_prices.py
+          fi
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/prices.db data/prices.json dashboard/data/prices.json
+          git diff --cached --quiet || git commit -m "Update fuel price data"
+          git push

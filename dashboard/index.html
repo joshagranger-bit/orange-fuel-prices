@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orange NSW Diesel Prices</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --good:           #0ca30c;
+
+    --series-1: #2a78d6; /* blue */
+    --series-2: #eb6834; /* orange */
+    --series-3: #1baf7a; /* aqua */
+    --series-4: #eda100; /* yellow */
+    --series-5: #e87ba4; /* magenta */
+    --series-6: #008300; /* green */
+    --series-7: #4a3aa7; /* violet */
+    --series-8: #e34948; /* red */
+    --series-other: #a6a49c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --good:           #0ca30c;
+
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --series-5: #d55181;
+      --series-6: #008300;
+      --series-7: #9085e9;
+      --series-8: #e66767;
+      --series-other: #5a5954;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--text-secondary);
+    margin: 0 0 20px;
+    font-size: 0.9rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (min-width: 860px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+    .full { grid-column: 1 / -1; }
+  }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card h2 {
+    font-size: 1rem;
+    margin: 0 0 12px;
+    color: var(--text-primary);
+  }
+  .callout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+  }
+  .callout .stat {
+    min-width: 160px;
+  }
+  .callout .label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+  }
+  .callout .value {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--good);
+  }
+  .callout .value .unit {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  canvas { max-height: 320px; }
+  .empty {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--gridline);
+    color: var(--text-primary);
+  }
+  th { color: var(--text-secondary); font-weight: 600; }
+  caption {
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+  <h1>Orange NSW &mdash; Diesel (PDL) Prices</h1>
+  <p class="subtitle">Postcode 2800 &middot; data pulled twice daily from the NSW Fuel API</p>
+
+  <div class="grid">
+    <div class="card full" id="calloutCard">
+      <h2>Best combo</h2>
+      <div id="calloutBody" class="callout"><p class="empty">No data yet &mdash; run <code>scripts/fetch_prices.py</code> to collect the first data points.</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Average price by day of week</h2>
+      <canvas id="dayChart"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Average price by station</h2>
+      <canvas id="stationChart"></canvas>
+    </div>
+
+    <div class="card full">
+      <h2>Price trend by station (last 8 weeks)</h2>
+      <canvas id="trendChart"></canvas>
+    </div>
+
+    <div class="card full" id="tableCard" style="display:none">
+      <h2>Station summary</h2>
+      <table id="summaryTable">
+        <caption>Average, lowest and highest observed diesel price per station.</caption>
+        <thead>
+          <tr><th>Station</th><th>Avg (c/L)</th><th>Min (c/L)</th><th>Max (c/L)</th><th>Readings</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+const SERIES_COLORS = [
+  'var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)',
+  'var(--series-5)', 'var(--series-6)', 'var(--series-7)', 'var(--series-8)',
+];
+const root = getComputedStyle(document.documentElement);
+const resolvedSeriesColors = SERIES_COLORS.map(v => root.getPropertyValue(v.slice(4, -1)).trim() || v);
+const otherColor = root.getPropertyValue('--series-other').trim();
+const gridColor = root.getPropertyValue('--gridline').trim();
+const mutedColor = root.getPropertyValue('--text-muted').trim();
+const textColor = root.getPropertyValue('--text-secondary').trim();
+
+const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function mean(arr) {
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function stationLabel(row) {
+  return row.brand ? `${row.brand} – ${row.station_name}` : row.station_name;
+}
+
+const baseGridOptions = {
+  color: gridColor,
+};
+const baseTickOptions = {
+  color: mutedColor,
+  font: { family: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
+};
+const baseLegendOptions = {
+  labels: {
+    color: textColor,
+    usePointStyle: true,
+    font: { family: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
+  },
+};
+
+fetch('./data/prices.json')
+  .then(r => r.ok ? r.json() : [])
+  .catch(() => [])
+  .then(render);
+
+function render(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return;
+  }
+  rows = rows.filter(r => typeof r.price_cpl === 'number');
+
+  renderDayChart(rows);
+  renderStationChart(rows);
+  renderTrendChart(rows);
+  renderCallout(rows);
+  renderTable(rows);
+}
+
+function renderDayChart(rows) {
+  const byDay = {};
+  DAY_ORDER.forEach(d => byDay[d] = []);
+  rows.forEach(r => { if (byDay[r.day_of_week]) byDay[r.day_of_week].push(r.price_cpl); });
+
+  const labels = DAY_ORDER.filter(d => byDay[d].length > 0);
+  const values = labels.map(d => mean(byDay[d]));
+  const minValue = Math.min(...values);
+
+  new Chart(document.getElementById('dayChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: values.map(v => v === minValue ? mutedColorGood() : resolvedSeriesColors[0]),
+        borderRadius: 4,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.parsed.y.toFixed(1)} c/L` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: baseTickOptions },
+        y: { grid: baseGridOptions, ticks: baseTickOptions, title: { display: true, text: 'c/L', color: mutedColor } },
+      },
+    },
+  });
+}
+
+function mutedColorGood() {
+  return root.getPropertyValue('--good').trim();
+}
+
+function renderStationChart(rows) {
+  const byStation = {};
+  rows.forEach(r => {
+    const label = stationLabel(r);
+    (byStation[label] = byStation[label] || []).push(r.price_cpl);
+  });
+
+  const entries = Object.entries(byStation)
+    .map(([label, prices]) => [label, mean(prices)])
+    .sort((a, b) => a[1] - b[1]);
+
+  const labels = entries.map(e => e[0]);
+  const values = entries.map(e => e[1]);
+  const minValue = Math.min(...values);
+
+  new Chart(document.getElementById('stationChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: values.map(v => v === minValue ? mutedColorGood() : resolvedSeriesColors[0]),
+        borderRadius: 4,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.parsed.x.toFixed(1)} c/L` } } },
+      scales: {
+        x: { grid: baseGridOptions, ticks: baseTickOptions, title: { display: true, text: 'c/L', color: mutedColor } },
+        y: { grid: { display: false }, ticks: baseTickOptions },
+      },
+    },
+  });
+}
+
+function renderTrendChart(rows) {
+  const cutoff = Date.now() - 56 * 24 * 60 * 60 * 1000;
+  const recent = rows.filter(r => new Date(r.timestamp).getTime() >= cutoff);
+  if (recent.length === 0) return;
+
+  const byStation = {};
+  recent.forEach(r => {
+    const label = stationLabel(r);
+    (byStation[label] = byStation[label] || []).push(r);
+  });
+
+  const rankedStations = Object.entries(byStation)
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([label]) => label);
+
+  const mainStations = rankedStations.slice(0, 8);
+  const otherStations = rankedStations.slice(8);
+
+  const timestamps = [...new Set(recent.map(r => r.timestamp))].sort();
+  const labels = timestamps.map(t => new Date(t).toLocaleDateString('en-AU', { day: '2-digit', month: 'short' }));
+
+  const datasets = mainStations.map((label, i) => {
+    const byTs = {};
+    byStation[label].forEach(r => byTs[r.timestamp] = r.price_cpl);
+    return {
+      label,
+      data: timestamps.map(t => byTs[t] ?? null),
+      borderColor: resolvedSeriesColors[i],
+      backgroundColor: resolvedSeriesColors[i],
+      spanGaps: true,
+      borderWidth: 2,
+      pointRadius: 3,
+      tension: 0.15,
+    };
+  });
+
+  if (otherStations.length > 0) {
+    const byTs = {};
+    timestamps.forEach(t => {
+      const vals = otherStations
+        .map(label => (byStation[label].find(r => r.timestamp === t) || {}).price_cpl)
+        .filter(v => typeof v === 'number');
+      if (vals.length) byTs[t] = mean(vals);
+    });
+    datasets.push({
+      label: `Other stations (avg of ${otherStations.length})`,
+      data: timestamps.map(t => byTs[t] ?? null),
+      borderColor: otherColor,
+      backgroundColor: otherColor,
+      borderDash: [4, 3],
+      spanGaps: true,
+      borderWidth: 2,
+      pointRadius: 2,
+      tension: 0.15,
+    });
+  }
+
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      plugins: {
+        legend: { ...baseLegendOptions, position: 'bottom' },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y?.toFixed(1)} c/L` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { ...baseTickOptions, maxRotation: 45, minRotation: 45 } },
+        y: { grid: baseGridOptions, ticks: baseTickOptions, title: { display: true, text: 'c/L', color: mutedColor } },
+      },
+    },
+  });
+}
+
+function renderCallout(rows) {
+  const byDay = {};
+  DAY_ORDER.forEach(d => byDay[d] = []);
+  rows.forEach(r => { if (byDay[r.day_of_week]) byDay[r.day_of_week].push(r.price_cpl); });
+  const dayEntries = DAY_ORDER.filter(d => byDay[d].length > 0).map(d => [d, mean(byDay[d])]);
+  const bestDay = dayEntries.sort((a, b) => a[1] - b[1])[0];
+
+  const byStation = {};
+  rows.forEach(r => {
+    const label = stationLabel(r);
+    (byStation[label] = byStation[label] || []).push(r.price_cpl);
+  });
+  const stationEntries = Object.entries(byStation).map(([label, prices]) => [label, mean(prices)]);
+  const bestStation = stationEntries.sort((a, b) => a[1] - b[1])[0];
+
+  const comboRows = rows.filter(r => r.day_of_week === bestDay[0] && stationLabel(r) === bestStation[0]);
+  const comboAvg = comboRows.length ? mean(comboRows.map(r => r.price_cpl)) : null;
+
+  const body = document.getElementById('calloutBody');
+  body.innerHTML = `
+    <div class="stat">
+      <div class="label">Cheapest day</div>
+      <div class="value">${bestDay[0]}<span class="unit">${bestDay[1].toFixed(1)} c/L avg</span></div>
+    </div>
+    <div class="stat">
+      <div class="label">Cheapest station</div>
+      <div class="value">${bestStation[0]}<span class="unit">${bestStation[1].toFixed(1)} c/L avg</span></div>
+    </div>
+    <div class="stat">
+      <div class="label">Best combo${comboAvg === null ? ' (no overlap yet)' : ''}</div>
+      <div class="value">${comboAvg === null ? '—' : comboAvg.toFixed(1) + '<span class="unit">c/L</span>'}</div>
+    </div>
+  `;
+}
+
+function renderTable(rows) {
+  const byStation = {};
+  rows.forEach(r => {
+    const label = stationLabel(r);
+    (byStation[label] = byStation[label] || []).push(r.price_cpl);
+  });
+  const tbody = document.querySelector('#summaryTable tbody');
+  tbody.innerHTML = Object.entries(byStation)
+    .map(([label, prices]) => [label, mean(prices), Math.min(...prices), Math.max(...prices), prices.length])
+    .sort((a, b) => a[1] - b[1])
+    .map(([label, avg, min, max, n]) => `
+      <tr>
+        <td>${label}</td>
+        <td>${avg.toFixed(1)}</td>
+        <td>${min.toFixed(1)}</td>
+        <td>${max.toFixed(1)}</td>
+        <td>${n}</td>
+      </tr>
+    `).join('');
+  document.getElementById('tableCard').style.display = '';
+}
+</script>
+</body>
+</html>
