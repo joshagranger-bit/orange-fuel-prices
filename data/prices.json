@@ -1834,5 +1834,32 @@
     "brand": "7-Eleven",
     "address": "68-74 MOLONG RD, ORANGE NSW 2800",
     "price_cpl": 267.9
+  },
+  {
+    "timestamp": "2026-11-11T21:31:32.587909+11:00",
+    "day_of_week": "Wednesday",
+    "station_code": "20085",
+    "station_name": "Metro Orange- Self-serve",
+    "brand": "Metro Fuel",
+    "address": "1686 FOREST RD, ORANGE NSW 2800",
+    "price_cpl": 262.9
+  },
+  {
+    "timestamp": "2026-11-11T21:31:32.587909+11:00",
+    "day_of_week": "Wednesday",
+    "station_code": "18159",
+    "station_name": "BP North Orange",
+    "brand": "BP",
+    "address": "5 Hanrahan Place, ORANGE NSW 2800",
+    "price_cpl": 264.5
+  },
+  {
+    "timestamp": "2026-11-11T21:31:32.587909+11:00",
+    "day_of_week": "Wednesday",
+    "station_code": "18258",
+    "station_name": "7-Eleven Orange North",
+    "brand": "7-Eleven",
+    "address": "68-74 MOLONG RD, ORANGE NSW 2800",
+    "price_cpl": 267.9
   }
 ]
